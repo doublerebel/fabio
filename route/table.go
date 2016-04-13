@@ -234,9 +234,15 @@ func (t Table) Lookup(req *http.Request, trace string) *Target {
 		log.Printf("[TRACE] %s Tracing %s%s", trace, req.Host, req.RequestURI)
 	}
 
-	target := t.doLookup(strings.ToLower(req.Host), req.RequestURI, trace)
-	if target == nil {
-		target = t.doLookup("", req.RequestURI, trace)
+	target, path := t.doLookup(strings.ToLower(req.Host), req.RequestURI, trace)
+	// if path is root, try without host
+	if target == nil || path == "/" {
+		var catchall *Target
+		catchall, path = t.doLookup("", req.RequestURI, trace)
+		// if we found a match more specific than root, use that match
+		if catchall != nil && (target == nil || path != "/") {
+			target = catchall
+		}
 	}
 
 	if target != nil && trace != "" {
@@ -246,30 +252,39 @@ func (t Table) Lookup(req *http.Request, trace string) *Target {
 	return target
 }
 
-func (t Table) doLookup(host, path, trace string) *Target {
+func (t Table) doLookup(host, path, trace string) (*Target, string) {
+	var route *Route
 	for _, r := range t[host] {
 		if match(path, r) {
-			n := len(r.Targets)
-			if n == 0 {
-				return nil
-			}
-
-			var target *Target
-			if n == 1 {
-				target = r.Targets[0]
-			} else {
-				target = pick(r)
-			}
 			if trace != "" {
 				log.Printf("[TRACE] %s Match %s%s", trace, r.Host, r.Path)
 			}
-			return target
-		}
-		if trace != "" {
+
+			route = r
+			if route.Path != "/" {
+				break
+			}
+		} else if trace != "" {
 			log.Printf("[TRACE] %s No match %s%s", trace, r.Host, r.Path)
 		}
 	}
-	return nil
+	if route == nil {
+		return nil, ""
+	}
+
+	n := len(route.Targets)
+	if n == 0 {
+		return nil, ""
+	}
+
+	var target *Target
+	if n == 1 {
+		target = route.Targets[0]
+	} else {
+		target = pick(route)
+	}
+	return target, route.Path
+
 }
 
 func (t Table) Config(addWeight bool) []string {
