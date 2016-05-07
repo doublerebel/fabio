@@ -9,10 +9,13 @@ var Default = &Config{
 	Proxy: Proxy{
 		MaxConn:      10000,
 		Strategy:     "rnd",
+		ShutdownWait: time.Duration(0),
 		DialTimeout:  30 * time.Second,
-		LocalIP:      LocalIPString(),
+		ResponseHeaderTimeout: time.Duration(0),
+		KeepAliveTimeout:      time.Duration(0),
 		ReadTimeout:  time.Duration(0),
 		WriteTimeout: time.Duration(0),
+		LocalIP:      LocalIPString(),
 	},
 	Registry: Registry{
 		Backend: "consul",

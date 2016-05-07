@@ -70,6 +70,8 @@ func FromFlags(args []string) (showVersion bool, cfgPath string, configdebug boo
 	fs.String("registry.consul.serviceaddr", "", "Consul service registration address")
 	fs.String("proxy.addr", "", "proxy address")
 	fs.String("proxy.localip", "", "proxy local IP")
+	fs.String("proxy.responseheadertimeout", "", "proxy response header timeout")
+	fs.String("proxy.keepalivetimeout", "", "proxy keep-alive timeout")
 	fs.String("proxy.header.clientip", "", "proxy header client IP")
 	fs.String("ui.addr", "", "UI address")
 
