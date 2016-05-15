@@ -40,6 +40,7 @@ type Proxy struct {
 	ClientIPHeader        string
 	TLSHeader             string
 	TLSHeaderValue        string
+	CopyHeaders           bool
 }
 
 type Runtime struct {

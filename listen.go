@@ -15,6 +15,8 @@ import (
 	"github.com/eBay/fabio/config"
 	"github.com/eBay/fabio/exit"
 	"github.com/eBay/fabio/proxy"
+
+	"github.com/doublerebel/publictransport"
 )
 
 var quit = make(chan bool)
@@ -58,19 +60,39 @@ func listenAndServe(l config.Listen, h http.Handler) {
 		log.Printf("[INFO] HTTP proxy listening on %s", l.Addr)
 	}
 
+	p := h.(*proxy.Proxy)
+	if p.Cfg.CopyHeaders {
+		srv.ConnState = cleanupConns(p)
+	}
+
 	if err := serve(srv); err != nil {
 		log.Fatal("[FATAL] ", err)
 	}
 }
 
+func cleanupConns(p *proxy.Proxy) (func(net.Conn, http.ConnState)) {
+	return func(conn net.Conn, state http.ConnState) {
+		if state == http.StateClosed {
+			_, ok := p.Conns[conn]
+			if !ok {
+				log.Printf("[ERROR] did not find conn for pointer %p", conn)
+			} else {
+				delete(p.Conns, conn)
+			}
+		}
+	}
+}
+
 var tlsLoadX509KeyPair = tls.LoadX509KeyPair
 
-func newServer(l config.Listen, h http.Handler) (*http.Server, error) {
-	srv := &http.Server{
-		Addr:         l.Addr,
-		Handler:      h,
-		ReadTimeout:  l.ReadTimeout,
-		WriteTimeout: l.WriteTimeout,
+func newServer(l config.Listen, h http.Handler) (*publictransport.Server, error) {
+	srv := &publictransport.Server{
+		Server: &http.Server{
+			Addr:         l.Addr,
+			Handler:      h,
+			ReadTimeout:  l.ReadTimeout,
+			WriteTimeout: l.WriteTimeout,
+			},
 	}
 
 	if l.CertFile != "" {
@@ -100,7 +122,7 @@ func newServer(l config.Listen, h http.Handler) (*http.Server, error) {
 	return srv, nil
 }
 
-func serve(srv *http.Server) error {
+func serve(srv *publictransport.Server) error {
 	ln, err := net.Listen("tcp", srv.Addr)
 	if err != nil {
 		log.Fatal("[FATAL] ", err)

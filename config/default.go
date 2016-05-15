@@ -16,6 +16,7 @@ var Default = &Config{
 		ReadTimeout:  time.Duration(0),
 		WriteTimeout: time.Duration(0),
 		LocalIP:      LocalIPString(),
+		CopyHeaders:  false,
 	},
 	Registry: Registry{
 		Backend: "consul",

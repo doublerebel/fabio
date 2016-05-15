@@ -54,6 +54,10 @@ func newProxy(cfg *config.Config) *proxy.Proxy {
 	}
 	log.Printf("[INFO] Using routing strategy %q", cfg.Proxy.Strategy)
 
+	if cfg.Proxy.CopyHeaders {
+		log.Printf("[INFO] Using CopyHeaders mode", cfg.Proxy.Strategy)
+	}
+
 	tr := &http.Transport{
 		ResponseHeaderTimeout: cfg.Proxy.ResponseHeaderTimeout,
 		MaxIdleConnsPerHost:   cfg.Proxy.MaxConn,

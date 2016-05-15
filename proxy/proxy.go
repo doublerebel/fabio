@@ -1,10 +1,13 @@
 package proxy
 
 import (
+	"net"
 	"net/http"
 	"time"
 
 	"github.com/eBay/fabio/config"
+
+	"github.com/doublerebel/publictransport"
 
 	gometrics "github.com/rcrowley/go-metrics"
 )
@@ -12,14 +15,15 @@ import (
 // Proxy is a dynamic reverse proxy.
 type Proxy struct {
 	tr       http.RoundTripper
-	cfg      config.Proxy
+	Cfg      config.Proxy
 	requests gometrics.Timer
+	Conns    map[net.Conn]*PersistConnHeaders
 }
 
 func New(tr http.RoundTripper, cfg config.Proxy) *Proxy {
 	return &Proxy{
 		tr:       tr,
-		cfg:      cfg,
+		Cfg:      cfg,
 		requests: gometrics.GetOrRegisterTimer("requests", gometrics.DefaultRegistry),
 	}
 }
@@ -36,7 +40,11 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := addHeaders(r, p.cfg); err != nil {
+	if p.Cfg.CopyHeaders {
+		p.CopyHeaders(w, r)
+	}
+
+	if err := addHeaders(r, p.Cfg); err != nil {
 		http.Error(w, "cannot parse "+r.RemoteAddr, http.StatusInternalServerError)
 		return
 	}
@@ -57,3 +65,52 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	p.requests.UpdateSince(start)
 	t.Timer.UpdateSince(start)
 }
+
+type HeaderMap map[string]string
+
+type PersistConnHeaders struct {
+		pastFirstRequest  bool
+		hasExtraHeaders   bool
+		HeaderMap         HeaderMap
+}
+
+func (p *Proxy) CopyHeaders(w http.ResponseWriter, r *http.Request) {
+	if p.Conns == nil {
+		p.Conns = make(map[net.Conn]*PersistConnHeaders)
+	}
+
+	res, ok := w.(*publictransport.Response)
+	if !ok {
+		return
+	}
+
+	conn := res.Conn.Rwc
+
+	if p.Conns[conn] == nil {
+		p.Conns[conn] = &PersistConnHeaders{
+			HeaderMap: HeaderMap{
+				"X-Forwarded-For":   "",
+				"X-Forwarded-Proto": "",
+				"Forwarded":         "",
+			},
+		}
+	}
+
+	pch := p.Conns[conn]
+
+	if !pch.pastFirstRequest {
+		pch.pastFirstRequest = true
+		for name := range pch.HeaderMap {
+			if header := r.Header.Get(name); header != "" {
+				pch.HeaderMap[name] = header
+				pch.hasExtraHeaders = true
+			}
+		}
+	} else if pch.hasExtraHeaders {
+		for name, header := range pch.HeaderMap {
+			r.Header.Set(name, header)
+		}
+	}
+
+}
+

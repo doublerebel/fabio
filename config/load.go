@@ -73,6 +73,7 @@ func FromFlags(args []string) (showVersion bool, cfgPath string, configdebug boo
 	fs.String("proxy.responseheadertimeout", "", "proxy response header timeout")
 	fs.String("proxy.keepalivetimeout", "", "proxy keep-alive timeout")
 	fs.String("proxy.header.clientip", "", "proxy header client IP")
+	fs.Bool("proxy.copyheaders", false, "copy headers for keep-alive connections (bud-tls compat)")
 	fs.String("ui.addr", "", "UI address")
 
 	v.BindPFlags(fs)
