@@ -75,8 +75,10 @@ func cleanupConns(p *proxy.Proxy) (func(net.Conn, http.ConnState)) {
 		if state == http.StateClosed {
 			_, ok := p.Conns[conn]
 			if !ok {
-				log.Printf("[ERROR] did not find conn for pointer %p", conn)
+				log.Printf("[DEBUG ERROR] did not find conn for pointer %p", conn)
 			} else {
+				log.Printf("[DEBUG] deleting connection with pointer %p", conn)
+				log.Printf("[DEBUG] %d CopyHeaders.CloseNotify", p.Conns[conn].Id)
 				delete(p.Conns, conn)
 			}
 		}

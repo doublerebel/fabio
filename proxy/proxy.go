@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"log"
 	"net"
 	"net/http"
 	"time"
@@ -18,6 +19,7 @@ type Proxy struct {
 	Cfg      config.Proxy
 	requests gometrics.Timer
 	Conns    map[net.Conn]*PersistConnHeaders
+	totalConnections int
 }
 
 func New(tr http.RoundTripper, cfg config.Proxy) *Proxy {
@@ -72,6 +74,7 @@ type PersistConnHeaders struct {
 		pastFirstRequest  bool
 		hasExtraHeaders   bool
 		HeaderMap         HeaderMap
+		Id                int
 }
 
 func (p *Proxy) CopyHeaders(w http.ResponseWriter, r *http.Request) {
@@ -81,18 +84,23 @@ func (p *Proxy) CopyHeaders(w http.ResponseWriter, r *http.Request) {
 
 	res, ok := w.(*publictransport.Response)
 	if !ok {
+		log.Printf("[DEBUG ERROR] unable to cast ResponseWriter to publictransport.Response")
 		return
 	}
 
 	conn := res.Conn.Rwc
 
 	if p.Conns[conn] == nil {
+		p.totalConnections++
+		log.Printf("[DEBUG] %d New Connection", p.totalConnections)
+
 		p.Conns[conn] = &PersistConnHeaders{
 			HeaderMap: HeaderMap{
 				"X-Forwarded-For":   "",
 				"X-Forwarded-Proto": "",
 				"Forwarded":         "",
 			},
+			Id: p.totalConnections,
 		}
 	}
 
