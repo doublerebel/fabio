@@ -34,14 +34,14 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if p.Cfg.CopyHeaders {
+		p.CopyHeaders(w, r)
+	}
+
 	t := target(r)
 	if t == nil {
 		w.WriteHeader(http.StatusNotFound)
 		return
-	}
-
-	if p.Cfg.CopyHeaders {
-		p.CopyHeaders(w, r)
 	}
 
 	if err := addHeaders(r, p.Cfg); err != nil {
