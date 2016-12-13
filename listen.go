@@ -72,7 +72,16 @@ func listenAndServe(l config.Listen, h http.Handler) {
 
 func cleanupConns(p *proxy.Proxy) (func(net.Conn, http.ConnState)) {
 	return func(conn net.Conn, state http.ConnState) {
-		if state == http.StateClosed {
+		switch; state {
+		case http.StateNew:
+			log.Printf("[DEBUG] new conn for pointer %p", conn)
+		case http.StateActive:
+			log.Printf("[DEBUG] active conn for pointer %p", conn)
+		case http.StateHijacked:
+			log.Printf("[DEBUG] hijacked conn for pointer %p", conn)
+		case http.StateIdle:
+			log.Printf("[DEBUG] idle conn for pointer %p", conn)
+		case http.StateClosed:
 			_, ok := p.Conns[conn]
 			if !ok {
 				log.Printf("[DEBUG ERROR] did not find conn for pointer %p", conn)

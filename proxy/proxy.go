@@ -89,6 +89,7 @@ func (p *Proxy) CopyHeaders(w http.ResponseWriter, r *http.Request) {
 	}
 
 	conn := res.Conn.Rwc
+	log.Printf("[DEBUG] looking for connection for pointer %p", conn)
 
 	if p.Conns[conn] == nil {
 		p.totalConnections++
